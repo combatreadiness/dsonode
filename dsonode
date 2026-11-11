@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# =============================================================
+# dsonode — declare VMs and LXCs in one YAML file, build them, get an Ansible inventory
+#   Providers: proxmox (now), incus and existing (later)
+#
+# Needs  : bash, curl, jq, OpenTofu. Nothing else.
+# Run on : any Linux machine that can reach the hypervisor API
+#          (a proxmox-iac-bootstrap management node works out of the box)
+# Usage  : dsonode help
+#
+# Sets: one folder per set of nodes, ~/.config/dsonode/<set>/
+#   nodes.yml           what to build (you edit this)
+#   terraform.tfstate   what was built
+#   inventory.yml       Ansible inventory, written by `dsonode up`
+#   .terraform/         OpenTofu working files
+# =============================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+# shellcheck source=lib/common.sh
+. "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=lib/proxmox.sh
+. "${SCRIPT_DIR}/lib/proxmox.sh"
+# shellcheck source=lib/doctor.sh
+. "${SCRIPT_DIR}/lib/doctor.sh"
+# shellcheck source=lib/doctor-proxmox.sh
+. "${SCRIPT_DIR}/lib/doctor-proxmox.sh"
+# shellcheck source=lib/new.sh
+. "${SCRIPT_DIR}/lib/new.sh"
+# shellcheck source=lib/vmid.sh
+. "${SCRIPT_DIR}/lib/vmid.sh"
+# shellcheck source=lib/tofu.sh
+. "${SCRIPT_DIR}/lib/tofu.sh"
+
+DSONODE_HOME="${DSONODE_HOME:-$HOME/.config/dsonode}"
+SET_RE='^[a-z][a-z0-9-]{0,15}$'
+
+usage() {
+  cat <<'EOF'
+Usage: dsonode <command> [options]
+
+  doctor [--cred FILE]    check this machine and the Proxmox API; reads only
+  new <set>               write ~/.config/dsonode/<set>/nodes.yml, filled in from the API
+  list                    every set
+  plan <set>              what OpenTofu would create or change; changes nothing
+  up <set> [-y]           build it, write the Ansible inventory, wait for SSH
+  inventory <set>         print the inventory path (ansible -i "$(dsonode inventory <set>)" ...)
+  down <set> [-y] [--purge]
+                          destroy what was built; --purge also deletes nodes.yml
+  help
+
+Credentials: PROXMOX_VE_ENDPOINT / PROXMOX_VE_API_TOKEN from the shell, or --cred FILE
+(doctor) / DSONODE_CRED, or the proxmox-iac-bootstrap file if there is exactly one.
+EOF
+}
+
+# =============================================================
+main() {
+  local cmd="${1:-help}"
+  if [[ $# -gt 0 ]]; then shift; fi
+  case "$cmd" in
+    doctor) cmd_doctor "$@" ;;
+    new)    cmd_new "$@" ;;
+    list)   cmd_list ;;
+    plan)   cmd_plan "$@" ;;
+    up)     cmd_up "$@" ;;
+    down)   cmd_down "$@" ;;
+    inventory) cmd_inventory "$@" ;;
+    help|-h|--help) usage ;;
+    *) usage; exit 1 ;;
+  esac
+}
+
+main "$@"

@@ -1,0 +1,15 @@
+name: shellcheck
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n
+        run: for f in install.sh dsonode lib/*.sh; do bash -n "$f"; done
+      - name: shellcheck
+        run: shellcheck -S warning -x install.sh dsonode lib/*.sh
