@@ -100,6 +100,7 @@ dsonode doctor
 |---|---|
 | `dsonode doctor [--cred FILE]` | 도구, API, 토큰 권한, 스토리지, 템플릿, 네트워크 점검. 읽기만 함 |
 | `dsonode new <set>` | API에서 본 값으로 `~/.config/dsonode/<set>/nodes.yml` 작성 |
+| `dsonode new <set> --servers 3 --agents 1` | 같은 파일을 K3s 노드로 시작: 서버 3대, 에이전트 1대 (k3d와 같은 표기). 하나만 쓰면 나머지는 1 |
 | `dsonode list` | 모든 묶음과 생성 여부 |
 | `dsonode plan <set>` | OpenTofu가 바꿀 내용. 빠진 VM ID를 채우고, 만들지는 않음 |
 | `dsonode up <set> [-y]` | 만들고, inventory를 쓰고, 모든 노드가 SSH에 응답할 때까지 기다림 |

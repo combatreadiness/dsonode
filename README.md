@@ -100,6 +100,7 @@ dsonode doctor
 |---|---|
 | `dsonode doctor [--cred FILE]` | Check tools, API, token rights, storage, templates, networks. Reads only |
 | `dsonode new <set>` | Write `~/.config/dsonode/<set>/nodes.yml` from what the API shows |
+| `dsonode new <set> --servers 3 --agents 1` | The same file, starting with K3s nodes: 3 servers and 1 agent (the words k3d uses). One given, the other is 1 |
 | `dsonode list` | Every set, built or not |
 | `dsonode plan <set>` | What OpenTofu would change. Gives out missing VM IDs, builds nothing |
 | `dsonode up <set> [-y]` | Build it, write the inventory, wait until every node answers on SSH |

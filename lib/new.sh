@@ -3,16 +3,42 @@
 # lib/new.sh — dsonode new: write a set's nodes.yml from what the API shows (sourced by dsonode)
 # =============================================================
 
+NEW_USAGE="Usage: dsonode new <set> [--servers N] [--agents N]"
+
 cmd_new() {
-  local set="${1:-}"
-  [[ -n "$set" ]] || die "Usage: dsonode new <set>"
+  # --servers / --agents (same words as k3d): start nodes.yml with K3s nodes. One given, the other is 1.
+  local set="" servers="" agents=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --servers) servers="${2:-}"; shift ;;
+      --agents)  agents="${2:-}"; shift ;;
+      -*) die "Unknown option '$1'. ${NEW_USAGE}" ;;
+      *)  [[ -z "$set" ]] || die "$NEW_USAGE"; set="$1" ;;
+    esac
+    if [[ $# -gt 0 ]]; then shift; fi
+  done
+
+  [[ -n "$set" ]] || die "$NEW_USAGE"
   [[ "$set" =~ $SET_RE ]] || die "Set name '${set}': lowercase letters, digits and -, starting with a letter, 16 characters max."
   local dir="${DSONODE_HOME}/${set}"
   [[ ! -e "${dir}/nodes.yml" ]] || die "Set '${set}' already exists: ${dir}/nodes.yml"
+
+  local k3s=0
+  if [[ -n "${servers}${agents}" ]]; then
+    k3s=1
+    servers="${servers:-1}"
+    agents="${agents:-1}"
+    [[ "$servers" =~ ^[1-9]$ ]] || die "--servers ${servers}: use a number from 1 to 9."
+    [[ "$agents" =~ ^[0-9]{1,2}$ ]] || die "--agents ${agents}: use a number from 0 to 99."
+    if (( servers % 2 == 0 )); then
+      warn "${servers} servers: an even number does not survive more failures than one fewer. Use 1, 3 or 5."
+    fi
+  fi
+
   need_api
 
   step "Looking at Proxmox"
-  local perms node pool storage template lxc_template zone mode bridge="" vnet="" cidr="" start n c b ip used taken
+  local perms node pool storage template lxc_template zone mode bridge="" vnet="" cidr="" start n c b ip used taken i
   perms="$(pve_api /access/permissions)"
   node="$(pve_api /nodes | jq -r '[.data[] | select(.status == "online")][0].node // empty')"
   [[ -n "$node" ]] || die "No online Proxmox node."
@@ -117,10 +143,26 @@ defaults:
 # One line per node (dsonode adds vmid: to each line). host = last number of its IP.
 # roles become Ansible groups (use _ not -).
 # type: vm (SSH user debian) | lxc (SSH user root; nesting: true for Docker inside)
+EOF
+    if [[ $k3s -eq 1 ]]; then
+      cat <<EOF
+# K3s: server = control plane, agent = worker.
+# One more agent: copy an agent line, change its name and host. Keep servers at 1, 3 or 5.
+nodes:
+EOF
+      for i in $(seq 1 "$servers"); do
+        printf '  server%d: { type: vm, host: %d, roles: [k3s_cluster, server] }\n' "$i" $((10 + i))
+      done
+      for i in $(seq 1 "$agents"); do
+        printf '  agent%d: { type: vm, host: %d, roles: [k3s_cluster, agent] }\n' "$i" $((20 + i))
+      done
+    else
+      cat <<EOF
 nodes:
   node1: { type: vm, host: 11, roles: [example] }
   # box1: { type: lxc, host: 21, roles: [example] }
 EOF
+    fi
   } > "${dir}/nodes.yml"
   chmod 600 "${dir}/nodes.yml"
   echo
@@ -134,7 +176,8 @@ cmd_list() {
   for f in "$DSONODE_HOME"/*/nodes.yml; do
     [[ -f "$f" ]] || { echo "  (none yet: dsonode new <set>)"; return 0; }
     set="${f%/nodes.yml}"; set="${set##*/}"
-    if [[ -s "${f%/nodes.yml}/terraform.tfstate" ]]; then
+    # down leaves a state file with no resources in it: count them, not the file size
+    if jq -e '(.resources // []) | length > 0' "${f%/nodes.yml}/terraform.tfstate" >/dev/null 2>&1; then
       printf '  %-16s %s\n' "$set" "built"
     else
       printf '  %-16s %s\n' "$set" "not built"

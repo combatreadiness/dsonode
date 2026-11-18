@@ -41,6 +41,7 @@ Usage: dsonode <command> [options]
 
   doctor [--cred FILE]    check this machine and the Proxmox API; reads only
   new <set>               write ~/.config/dsonode/<set>/nodes.yml, filled in from the API
+      [--servers N] [--agents N]   start it with K3s nodes (same words as k3d)
   list                    every set
   plan <set>              what OpenTofu would create or change; changes nothing
   up <set> [-y]           build it, write the Ansible inventory, wait for SSH
