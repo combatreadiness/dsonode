@@ -32,7 +32,7 @@ Pool lab-workloads    the guests
 └── known_hosts         host keys of this set only
 ```
 
-Every `roles` entry in `nodes.yml` becomes an Ansible group. That is the whole contract with whatever runs next: [dsokube](https://github.com/combatreadiness/dsokube) takes `k3s_cluster`, `server` and `agent`, your own playbook takes its own groups.
+Every `roles` entry in `nodes.yml` becomes an Ansible group. That is the whole contract with whatever runs next: [dsokube](https://github.com/combatreadiness/dsokube) takes `k3s_cluster`, `server` and `agent` (K3s) or `rke2_cluster`, `rke2_servers` and `rke2_agents` (RKE2), your own playbook takes its own groups.
 
 ## nodes.yml
 
@@ -101,6 +101,7 @@ dsonode doctor
 | `dsonode doctor [--cred FILE]` | Check tools, API, token rights, storage, templates, networks. Reads only |
 | `dsonode new <set>` | Write `~/.config/dsonode/<set>/nodes.yml` from what the API shows |
 | `dsonode new <set> --servers 3 --agents 1` | The same file, starting with K3s nodes: 3 servers and 1 agent (the words k3d uses). One given, the other is 1 |
+| `dsonode new <set> --distro rke2` | RKE2 nodes instead: groups `rke2_cluster`, `rke2_servers`, `rke2_agents`, servers 4 cores / 8 GB / 40 GB, agents 2 / 4 / 30. Alone it means 1 server and 1 agent; works with `--servers` and `--agents` |
 | `dsonode list` | Every set, built or not |
 | `dsonode plan <set>` | What OpenTofu would change. Gives out missing VM IDs, builds nothing |
 | `dsonode up <set> [-y]` | Build it, write the inventory, wait until every node answers on SSH |

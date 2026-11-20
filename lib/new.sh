@@ -3,15 +3,17 @@
 # lib/new.sh — dsonode new: write a set's nodes.yml from what the API shows (sourced by dsonode)
 # =============================================================
 
-NEW_USAGE="Usage: dsonode new <set> [--servers N] [--agents N]"
+NEW_USAGE="Usage: dsonode new <set> [--servers N] [--agents N] [--distro k3s|rke2]"
 
 cmd_new() {
-  # --servers / --agents (same words as k3d): start nodes.yml with K3s nodes. One given, the other is 1.
-  local set="" servers="" agents=""
+  # --servers / --agents (same words as k3d): start nodes.yml with Kubernetes nodes. One given, the other is 1.
+  # --distro picks the group names (k3s-ansible or rke2-ansible); given alone, it means 1 server and 1 agent.
+  local set="" servers="" agents="" distro=""
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --servers) servers="${2:-}"; shift ;;
       --agents)  agents="${2:-}"; shift ;;
+      --distro)  distro="${2:-}"; shift ;;
       -*) die "Unknown option '$1'. ${NEW_USAGE}" ;;
       *)  [[ -z "$set" ]] || die "$NEW_USAGE"; set="$1" ;;
     esac
@@ -23,9 +25,14 @@ cmd_new() {
   local dir="${DSONODE_HOME}/${set}"
   [[ ! -e "${dir}/nodes.yml" ]] || die "Set '${set}' already exists: ${dir}/nodes.yml"
 
+  case "${distro:-k3s}" in
+    k3s|rke2) ;;
+    *) die "--distro ${distro}: use k3s or rke2." ;;
+  esac
   local k3s=0
-  if [[ -n "${servers}${agents}" ]]; then
+  if [[ -n "${servers}${agents}${distro}" ]]; then
     k3s=1
+    distro="${distro:-k3s}"
     servers="${servers:-1}"
     agents="${agents:-1}"
     [[ "$servers" =~ ^[1-9]$ ]] || die "--servers ${servers}: use a number from 1 to 9."
@@ -144,7 +151,19 @@ defaults:
 # roles become Ansible groups (use _ not -).
 # type: vm (SSH user debian) | lxc (SSH user root; nesting: true for Docker inside)
 EOF
-    if [[ $k3s -eq 1 ]]; then
+    if [[ $k3s -eq 1 && "$distro" == "rke2" ]]; then
+      cat <<EOF
+# RKE2: rke2_servers = control plane, rke2_agents = worker. It needs more than K3s: servers 4 cores / 8 GB.
+# One more agent: copy an agent line, change its name and host. Keep servers at 1, 3 or 5.
+nodes:
+EOF
+      for i in $(seq 1 "$servers"); do
+        printf '  server%d: { type: vm, host: %d, cores: 4, memory: 8192, disk: 40, roles: [rke2_cluster, rke2_servers] }\n' "$i" $((10 + i))
+      done
+      for i in $(seq 1 "$agents"); do
+        printf '  agent%d: { type: vm, host: %d, cores: 2, memory: 4096, disk: 30, roles: [rke2_cluster, rke2_agents] }\n' "$i" $((20 + i))
+      done
+    elif [[ $k3s -eq 1 ]]; then
       cat <<EOF
 # K3s: server = control plane, agent = worker.
 # One more agent: copy an agent line, change its name and host. Keep servers at 1, 3 or 5.

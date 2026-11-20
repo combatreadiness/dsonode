@@ -32,7 +32,7 @@ Pool lab-workloads    게스트가 들어가는 곳
 └── known_hosts         이 묶음의 호스트 키만
 ```
 
-`nodes.yml`의 `roles`에 적은 이름은 그대로 Ansible 그룹이 됩니다. 다음 단계와의 약속은 이게 전부입니다. [dsokube](https://github.com/combatreadiness/dsokube)는 `k3s_cluster`, `server`, `agent` 그룹을 가져가고, 직접 만든 플레이북은 자기 그룹을 가져가면 됩니다.
+`nodes.yml`의 `roles`에 적은 이름은 그대로 Ansible 그룹이 됩니다. 다음 단계와의 약속은 이게 전부입니다. [dsokube](https://github.com/combatreadiness/dsokube)는 `k3s_cluster`, `server`, `agent`(K3s) 또는 `rke2_cluster`, `rke2_servers`, `rke2_agents`(RKE2) 그룹을 가져가고, 직접 만든 플레이북은 자기 그룹을 가져가면 됩니다.
 
 ## nodes.yml
 
@@ -101,6 +101,7 @@ dsonode doctor
 | `dsonode doctor [--cred FILE]` | 도구, API, 토큰 권한, 스토리지, 템플릿, 네트워크 점검. 읽기만 함 |
 | `dsonode new <set>` | API에서 본 값으로 `~/.config/dsonode/<set>/nodes.yml` 작성 |
 | `dsonode new <set> --servers 3 --agents 1` | 같은 파일을 K3s 노드로 시작: 서버 3대, 에이전트 1대 (k3d와 같은 표기). 하나만 쓰면 나머지는 1 |
+| `dsonode new <set> --distro rke2` | RKE2 노드로 시작: 그룹은 `rke2_cluster`, `rke2_servers`, `rke2_agents`, 서버 4코어 / 8GB / 40GB, 에이전트 2 / 4 / 30. 이것만 쓰면 서버 1대, 에이전트 1대이고 `--servers`, `--agents`와 같이 써도 됨 |
 | `dsonode list` | 모든 묶음과 생성 여부 |
 | `dsonode plan <set>` | OpenTofu가 바꿀 내용. 빠진 VM ID를 채우고, 만들지는 않음 |
 | `dsonode up <set> [-y]` | 만들고, inventory를 쓰고, 모든 노드가 SSH에 응답할 때까지 기다림 |
